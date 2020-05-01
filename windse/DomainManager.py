@@ -432,8 +432,32 @@ class GenericDomain(object):
         self.hill_b = np.sin(2*self.hill_theta)/(4*self.hill_sigma_y**2) - np.sin(2*self.hill_theta)/(4*self.hill_sigma_x**2)
         self.hill_c = np.cos(self.hill_theta)**2/(2*self.hill_sigma_y**2) + np.sin(self.hill_theta)**2/(2*self.hill_sigma_x**2)
 
+    def SetupAnalyticGround_Bump2D_OpenFOAM(self):
+        self.hill_sigma_x = self.params["domain"]["gaussian"]["sigma_x"]
+        self.hill_amp = self.params["domain"]["gaussian"]["amp"]
+        self.hill_center = self.params["domain"]["gaussian"].get("center",[0.0,0.0])
+        self.hill_x0 = self.hill_center[0]
+        self.fprint("")
+        self.fprint("Ground Type: Gaussian Hill")
+        self.fprint("Hill Center:   ({: .2f})".format(self.hill_x0),offset=1)
+        self.fprint("Hill Amplitude: {: <7.2f}".format(self.hill_amp),offset=1)
+
     def GaussianGroundFuncion(self,x,y,dx=0,dy=0):
         return self.hill_amp*exp( - (self.hill_a*(x-self.hill_x0)**2 + 2*self.hill_b*(x-self.hill_x0)*(y-self.hill_y0) + self.hill_c*(y-self.hill_y0)**2)**2)+self.z_range[0]
+
+    def Gaussian_Bump2D_OpenFOAM(self,x,y,dx=0,dy=0):
+        # https://www.openfoam.com/documentation/guides/latest/doc/verification-validation-turbulent-bump-2d.html
+        mask = 1*(x>0.3)*(x<1.2)
+        hill = self.hill_amp*sin( self.hill_sigma_x*x - self.hill_x0)**4
+    
+        #This if statement is here because otherwise it
+        #gives errors with mask when using this dolfin constant type
+        #should be fine as long as you don't do optimization with
+        #this geometry
+        if (type(x) == dolfin.function.constant.Constant):
+            return hill + self.z_range[0]
+        else:
+            return mask*hill + self.z_range[0]
 
     def InterplatedGroundFunction(self,x,y,dx=0,dy=0):
         if dx == 0 and dy == 0:
@@ -1251,9 +1275,14 @@ class InterpolatedBoxDomain(BoxDomain):
         self.fprint("Building Ground Function",special="header")
 
         self.analytic = self.params["domain"].get("analytic",False)
+        self.Bump2d = self.params["domain"].get("Bump2d",False)
         if self.analytic:
-            self.SetupAnalyticGround()
-            self.ground_function = self.GaussianGroundFuncion
+            if self.Bump2d:        
+                self.SetupAnalyticGround_Bump2D_OpenFOAM()
+                self.ground_function = self.Gaussian_Bump2D_OpenFOAM
+            else:
+                self.SetupAnalyticGround()
+                self.ground_function = self.GaussianGroundFuncion
         else:
             self.SetupInterpolatedGround()
             self.ground_function = self.InterplatedGroundFunction

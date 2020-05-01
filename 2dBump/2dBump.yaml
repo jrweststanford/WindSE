@@ -1,0 +1,74 @@
+# General options
+general: 
+    name: 2d_Bump
+    output: ["mesh","initial_guess","height","turbine_force","solution"]
+    dolfin_adjoint: false
+
+wind_farm: 
+    type: imported
+    path: Input_Data/wind_farm.txt
+    
+domain: 
+    #                      # Description           | Units
+    type: box              #
+    x_range: [0, 1.5] # x-range of the domain | m
+    y_range: [0, 0.5] # y-range of the domain | m
+    z_range: [0, 0.5]   # z-range of the domain | m
+    nx: 24                 # Number of x-nodes     | -
+    ny: 12                 # Number of y-nodes     | -
+    nz: 12                 # Number of z-nodes      | -
+    interpolated: true 
+    analytic: true
+    Bump2d: true
+    gaussian: 
+        center: [1.0472,0]
+        amp: 0.05
+        sigma_x: 3.4907
+        theta: 0.78539816339
+        sigma_y: 400
+
+
+refine:
+    #                      # Description                  | Units
+    warp_type: smooth      # percent of cells moved       | -
+    warp_strength: 1.2     # percent of cells moved       | -
+    refine_custom: [
+        [1,full],
+        # [1, custom, [[-1200,1200],[-1200,1200],[0,140]]],
+        # [1, circle, 1020]
+    ]
+
+function_space:
+    type: linear
+
+boundary_condition:
+    vel_profile: uniform
+    #HH_vel: 69.44
+    HH_vel: 1.0
+    boundary_names:
+        top: 1
+        bottom: 2
+        front: 3
+        back: 4
+        left: 5
+        right: 6
+    boundary_types:
+        inflow: ["front"]
+        no_slip:   ["bottom"]
+        no_stress: ["back","left","right","top"]
+
+problem:
+    type: stabilized
+    viscosity: 0.2
+
+solver:
+    nonlinear_solver: newton
+    newton_relaxation: 0.9
+    type: steady
+    save_power: true
+
+optimization:
+    controls: [layout]
+    layout_bounds: [[-720, 720],[-720, 720]] 
+    taylor_test: true
+    optimize: false
